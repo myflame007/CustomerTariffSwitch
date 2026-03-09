@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CustomerTariffSwitch\CustomerTariffSwitch.csproj" />
     <Using Include="Xunit" />
   </ItemGroup>
 
