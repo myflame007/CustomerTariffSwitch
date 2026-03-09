@@ -1,8 +1,22 @@
+using System.Globalization;
+using System.Text;
+using CustomerTariffSwitch.Models;
+
 namespace CustomerTariffSwitch.Services;
 
-internal class CsvService
+public class CsvService
 {
     private const string InputFolderName = "Input Files";
+
+    public (List<Customer> Customers, List<SwitchRequest> Requests, List<Tariff> Tariffs) ReadKnownFiles()
+    {
+        var all = ReadAllSolutionItemCsvFiles();
+        return (
+            ParseCustomers(all["customers.csv"]),
+            ParseRequests(all["requests.csv"]),
+            ParseTariffs(all["tariffs.csv"])
+        );
+    }
 
     public Dictionary<string, List<string[]>> ReadAllSolutionItemCsvFiles()
     {
@@ -35,6 +49,68 @@ internal class CsvService
         }
 
         return result;
+    }
+
+    private static List<Customer> ParseCustomers(List<string[]> rows)
+    {
+        return rows
+            .Skip(1) // header
+            .Where(r => r.Length >= 5)
+            .Select(r => new Customer
+            {
+                CustomerId = r[0],
+                Name = FixBrokenEncoding(r[1]),
+                HasUnpaidInvoice = bool.Parse(r[2]),
+                Sla = r[3],
+                MeterType = r[4]
+            })
+            .ToList();
+    }
+
+    private static List<SwitchRequest> ParseRequests(List<string[]> rows)
+    {
+        return rows
+            .Skip(1) // header
+            .Where(r => r.Length >= 4)
+            .Select(r => new SwitchRequest
+            {
+                RequestId = r[0],
+                CustomerId = r[1],
+                TargetTariffId = r[2],
+                RequestedAt = DateTimeOffset.Parse(r[3], CultureInfo.InvariantCulture)
+            })
+            .ToList();
+    }
+
+    private static List<Tariff> ParseTariffs(List<string[]> rows)
+    {
+        return rows
+            .Skip(1) // header
+            .Where(r => r.Length >= 4)
+            .Select(r => new Tariff
+            {
+                TariffId = r[0],
+                Name = FixBrokenEncoding(r[1]),
+                RequiresSmartMeter = bool.Parse(r[2]),
+                BaseMonthlyGross = decimal.Parse(r[3], CultureInfo.InvariantCulture)
+            })
+            .ToList();
+    }
+
+    private static string FixBrokenEncoding(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        if (!value.Contains('Ã') && !value.Contains('Â'))
+        {
+            return value;
+        }
+
+        var latin1Bytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(value);
+        return Encoding.UTF8.GetString(latin1Bytes);
     }
 
     private static List<string> ReadAllLinesWithSharedAccess(string path)
