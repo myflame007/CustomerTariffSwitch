@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CustomerTariffSwitch.Models\CustomerTariffSwitch.Models.csproj" />
+  </ItemGroup>
+
 </Project>
