@@ -42,4 +42,12 @@ public class CsvServiceTests
         Assert.Equal(4, paidCount);
     }
 
+    [Fact]
+    public void CustomerNames_AreReadWithCorrectSpecialCharacters()
+    {
+        Assert.Contains(_customers, c => c.Name == "Stadtcafé GmbH");
+        Assert.Contains(_customers, c => c.Name == "Miriam Hölzl");
+        Assert.Contains(_customers, c => c.Name == "Bäckerei Schönbrunn KG");
+    }
+
 }

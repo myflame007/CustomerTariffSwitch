@@ -1,0 +1,16 @@
+{
+  "unknownCustomerCase": {
+    "request": {
+      "requestId": "R-EDGE-UNKNOWN-CUSTOMER",
+      "customerId": "C999",
+      "targetTariffId": "T-BASIC",
+      "requestedAt": "2025-11-01T10:00:00+01:00"
+    },
+    "tariff": {
+      "tariffId": "T-BASIC",
+      "name": "Basis",
+      "requiresSmartMeter": false,
+      "baseMonthlyGross": 24.50
+    }
+  }
+}
