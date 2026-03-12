@@ -61,8 +61,8 @@ public class CsvService
                 CustomerId = r[0],
                 Name = FixBrokenEncoding(r[1]),
                 HasUnpaidInvoice = bool.Parse(r[2]),
-                Sla = r[3],
-                MeterType = r[4]
+                Sla = ParseEnum<SLALevel>(r[3], "SLA"),
+                MeterType = ParseEnum<MeterType>(r[4], "MeterType")
             })
             .ToList();
     }
@@ -104,13 +104,23 @@ public class CsvService
             return value;
         }
 
-        if (!value.Contains('Ãƒ') && !value.Contains('Ã‚'))
+        if (!value.Contains('Ã') && !value.Contains('Â'))
         {
             return value;
         }
 
         var latin1Bytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(value);
         return Encoding.UTF8.GetString(latin1Bytes);
+    }
+
+    private static TEnum ParseEnum<TEnum>(string rawValue, string fieldName) where TEnum : struct, Enum
+    {
+        if (Enum.TryParse<TEnum>(rawValue, ignoreCase: true, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new FormatException($"Invalid value '{rawValue}' for {fieldName}.");
     }
 
     private static List<string> ReadAllLinesWithSharedAccess(string path)
@@ -146,3 +156,4 @@ public class CsvService
             $"Could not find '{InputFolderName}' folder by walking up from '{AppContext.BaseDirectory}'.");
     }
 }
+

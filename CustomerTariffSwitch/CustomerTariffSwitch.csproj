@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\CustomerTariffSwitch.Data\CustomerTariffSwitch.Data.csproj" />
     <ProjectReference Include="..\CustomerTariffSwitch.Models\CustomerTariffSwitch.Models.csproj" />
   </ItemGroup>
 
