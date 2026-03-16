@@ -26,6 +26,8 @@ public class DecisionRepository
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    public string GetOutputFilePath() => GetDecisionsFilePath();
+
     public IReadOnlySet<string> LoadProcessedRequestIds()
     {
         var path = GetDecisionsFilePath();

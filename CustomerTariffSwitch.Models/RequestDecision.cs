@@ -32,10 +32,11 @@ public class RequestDecision
 
     public override string ToString()
     {
-        var customerPart   = string.IsNullOrWhiteSpace(CustomerName)  ? string.Empty : $" | {CustomerName}";
-        var reasonPart     = string.IsNullOrWhiteSpace(Reason)        ? string.Empty : $" | {Reason}";
-        var dueAtPart      = DueAt.HasValue                           ? $" | DueAt={DueAt.Value:O}" : string.Empty;
-        var followUpPart   = string.IsNullOrWhiteSpace(FollowUpAction) ? string.Empty : $" | Action={FollowUpAction}";
-        return $"{RequestId} | {Status.ToString()}{customerPart}{reasonPart}{dueAtPart}{followUpPart}";
+        var label        = Status == DecisionStatus.Approved ? "[APPROVED]" : "[REJECTED]";
+        var customerPart = string.IsNullOrWhiteSpace(CustomerName)   ? string.Empty : $" | {CustomerName}";
+        var reasonPart   = string.IsNullOrWhiteSpace(Reason)         ? string.Empty : $" | Reason: {Reason}";
+        var dueAtPart    = DueAt.HasValue                            ? $" | Due: {DueAt.Value:O}" : string.Empty;
+        var followUpPart = string.IsNullOrWhiteSpace(FollowUpAction) ? string.Empty : $" | Follow-up: {FollowUpAction}";
+        return $"{label} {RequestId}{customerPart}{reasonPart}{dueAtPart}{followUpPart}";
     }
 }
