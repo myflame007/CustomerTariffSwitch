@@ -3,6 +3,7 @@ using CustomerTariffSwitch.Models;
 
 namespace CustomerTariffSwitch.Test;
 
+[Trait("Category", "Integration")]
 public class CsvServiceTests
 {
     private readonly List<Customer> _customers;

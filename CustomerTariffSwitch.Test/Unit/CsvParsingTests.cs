@@ -3,8 +3,8 @@ using CustomerTariffSwitch.Services;
 
 namespace CustomerTariffSwitch.Test;
 
-// Unit tests for CsvService parsing methods - no filesystem access, pure in-memory rows.
-// The rows format mirrors what CsvService produces after splitting lines by ';'.
+// Unit tests for CsvService parsing methods - no filesystem access, pure in-memory rows
+// The rows format mirrors what CsvService produces after splitting lines by ';'
 public class CsvParsingTests
 {
     // ------- ParseCustomers -------
