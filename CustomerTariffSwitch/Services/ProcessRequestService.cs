@@ -39,8 +39,6 @@ public class ProcessRequestService
 
         foreach (var request in requests)
         {
-            // TODO Scenario 8: skip already-processed requests (not yet implemented)
-
             // Scenario 5: Unknown customer ID
             if (!customersById.TryGetValue(request.CustomerId, out var customer))
             {

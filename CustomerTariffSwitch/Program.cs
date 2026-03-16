@@ -1,48 +1,40 @@
+using CustomerTariffSwitch.Models;
 using CustomerTariffSwitch.Services;
+
+const string decisionsOutputPath = "Output/decisions.json";
 
 var csvService = new CsvService();
 var processRequestService = new ProcessRequestService();
+var decisionRepository = new DecisionRepository();
 
-Console.WriteLine("Reading CSV ...");
-var (customers, requests, tariffs) = csvService.ReadKnownFiles();
+Console.WriteLine("=== CustomerTariffSwitch ===");
+Console.WriteLine();
 
-Console.WriteLine("Calculating SLA hours ...");
-var customersById = customers.ToDictionary(c => c.CustomerId, StringComparer.OrdinalIgnoreCase);
-var tariffsById = tariffs.ToDictionary(t => t.TariffId, StringComparer.OrdinalIgnoreCase);
+Console.WriteLine("Loading CSV files ...");
+var (customers, requests, tariffs, invalidRequests) = csvService.ReadKnownFiles();
+Console.WriteLine($"  => {customers.Count} customers, {tariffs.Count} tariffs, {requests.Count} requests loaded");
+Console.WriteLine();
 
-foreach (var request in requests)
-{
-    if (!customersById.TryGetValue(request.CustomerId, out var customer))
-    {
-        Console.WriteLine($"{request.RequestId} | SLA-Hours=N/A | Unknown customer");
-        continue;
-    }
+// Scenario 8: skip requests that were already processed in a previous run
+var processedIds = decisionRepository.LoadProcessedRequestIds();
 
-    if (!tariffsById.TryGetValue(request.TargetTariffId, out var tariff))
-    {
-        Console.WriteLine($"{request.RequestId} | SLA-Hours=N/A | Unknown tariff");
-        continue;
-    }
-
-    if (customer.HasUnpaidInvoice)
-    {
-        Console.WriteLine($"{request.RequestId} | SLA-Hours=N/A | Unpaid invoice");
-        continue;
-    }
-
-    var slaHours = processRequestService.CalculateSlaHours(customer, tariff);
-    Console.WriteLine($"{request.RequestId} | SLA-Hours={slaHours}");
-}
+// collection expression: [.. requests.Where(r => !processedIds.Contains(r.RequestId))] == requests.Where(r => !processedIds.Contains(r.RequestId)).ToList();
+requests = [.. requests.Where(r => !processedIds.Contains(r.RequestId))]; 
 
 Console.WriteLine("Processing requests ...");
-var decisions = processRequestService.ProcessRequests(customers, requests, tariffs);
+Console.WriteLine(new string('-', 60));
+
+var decisions = processRequestService.ProcessRequests(customers, requests, tariffs, invalidRequests);
 
 foreach (var decision in decisions)
 {
-    var reasonPart = string.IsNullOrWhiteSpace(decision.Reason) ? string.Empty : $" | {decision.Reason}";
-    var dueAtPart = decision.DueAt.HasValue ? $" | DueAt={decision.DueAt.Value:O}" : string.Empty;
-    var followUpPart = string.IsNullOrWhiteSpace(decision.FollowUpAction) ? string.Empty : $" | Action={decision.FollowUpAction}";
-    Console.WriteLine($"{decision.RequestId} | {decision.Status}{reasonPart}{dueAtPart}{followUpPart}");
+    Console.WriteLine(decision);
 }
 
+Console.WriteLine(new string('-', 60));
+Console.WriteLine($"  => {decisions.Count(d => d.Status == DecisionStatus.Approved)} approved, {decisions.Count(d => d.Status == DecisionStatus.Rejected)} rejected");
 Console.WriteLine();
+
+// Persist all decisions (including follow-up actions + deadlines) to Output/decisions.json
+decisionRepository.AppendDecisions(decisions);
+Console.WriteLine($"  => Decisions saved to {decisionsOutputPath}");
