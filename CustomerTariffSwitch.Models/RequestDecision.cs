@@ -8,6 +8,7 @@ public class RequestDecision
     public string? Reason { get; init; }
     public DateTimeOffset? DueAt { get; init; }
     public string? FollowUpAction { get; init; }
+    public DateTimeOffset? FollowUpDueAt { get; init; }
 
     public static RequestDecision Approved(string requestId, string customerName, DateTimeOffset dueAt, string? followUpAction = null) =>
         new()
@@ -16,7 +17,8 @@ public class RequestDecision
             Status = DecisionStatus.Approved,
             CustomerName = customerName,
             DueAt = dueAt,
-            FollowUpAction = followUpAction
+            FollowUpAction = followUpAction,
+            FollowUpDueAt = followUpAction != null ? dueAt : null
         };
 
     public static RequestDecision Rejected(string requestId, string reason, string? customerName = null) =>
