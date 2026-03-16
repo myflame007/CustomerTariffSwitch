@@ -23,8 +23,8 @@ public class CsvServiceTests
     [Fact]
     public void ReadKnownFiles_ReturnsAllExpectedFiles()
     {
-        Assert.Equal(5, _customers.Count);
-        Assert.Equal(6, _requests.Count); // R1007-R1009 are invalid and excluded
+        Assert.Equal(7, _customers.Count); // includes 2 rows with incomplete data (H-3)
+        Assert.Equal(6, _requests.Count);  // R1007-R1009 are invalid and excluded
         Assert.Equal(3, _tariffs.Count);
     }
 
@@ -60,11 +60,11 @@ public class CsvServiceTests
     }
 
     [Fact]
-    public void CustomersContainFourPaidInvoices()
+    public void CustomersContainSixPaidInvoices()
     {
         var paidCount = _customers.Count(c => !c.HasUnpaidInvoice);
 
-        Assert.Equal(4, paidCount);
+        Assert.Equal(6, paidCount);
     }
 
     [Fact]

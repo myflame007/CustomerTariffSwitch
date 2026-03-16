@@ -165,6 +165,76 @@ public class ProcessRequestServiceTests
         Assert.Null(decision.FollowUpAction);
     }
 
+    // DST: spring forward 2025-03-30 02:00 CET -> 03:00 CEST (gap: 02:00-02:59 is invalid)
+    // Request at 2025-03-28T01:00:00Z = 2025-03-28T02:00:00 CET
+    // +48h local = 2025-03-30T02:00:00 -> invalid -> pushed forward to 03:00:00 CEST (+02:00)
+    [Fact]
+    public void ProcessRequests_DueAt_IsAdjustedForward_WhenItFallsInSpringForwardGap()
+    {
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-1",
+            RequestedAt = new DateTimeOffset(2025, 3, 28, 1, 0, 0, TimeSpan.Zero) // 02:00 CET
+        };
+
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [tariff], []);
+
+        var decision = Assert.Single(result);
+        Assert.Equal(DecisionStatus.Approved, decision.Status);
+        // 02:00 is invalid -> pushed to 03:00 CEST (+02:00)
+        Assert.Equal(DateTimeOffset.Parse("2025-03-30T03:00:00+02:00"), decision.DueAt);
+    }
+
+    // DST: fall back 2025-10-26 03:00 CEST -> 02:00 CET (02:00-02:59 occurs twice = ambiguous)
+    // Request at 2025-10-24T00:00:00Z = 2025-10-24T02:00:00 CEST
+    // +48h local = 2025-10-26T02:00:00 -> ambiguous -> code picks max offset = CEST (+02:00)
+    [Fact]
+    public void ProcessRequests_DueAt_UsesEarlierOffset_WhenItFallsInFallBackAmbiguousHour()
+    {
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-1",
+            RequestedAt = new DateTimeOffset(2025, 10, 24, 0, 0, 0, TimeSpan.Zero) // 02:00 CEST
+        };
+
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [tariff], []);
+
+        var decision = Assert.Single(result);
+        Assert.Equal(DecisionStatus.Approved, decision.Status);
+        // ambiguous 02:00 -> picks max offset = +02:00 (CEST, the earlier occurrence)
+        Assert.Equal(DateTimeOffset.Parse("2025-10-26T02:00:00+02:00"), decision.DueAt);
+    }
+
     [Fact]
     public void ProcessRequests_ApprovesWithFollowUpAndExtendedDueDate_WhenSmartMeterUpgradeNeeded()
     {
