@@ -11,6 +11,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomerTariffSwitch.Models
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomerTariffSwitch.Data", "CustomerTariffSwitch.Data\CustomerTariffSwitch.Data.csproj", "{E73CDD30-7CDA-45D2-B8C3-31678885B20A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{352EB45E-9363-4206-929C-5D75418C8ECB}"
+	ProjectSection(SolutionItems) = preProject
+		Input Files\customers.csv = Input Files\customers.csv
+		Input Files\requests.csv = Input Files\requests.csv
+		Input Files\tariffs.csv = Input Files\tariffs.csv
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

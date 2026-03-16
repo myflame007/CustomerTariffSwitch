@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
+using CustomerTariffSwitch.Data.Helper;
 using CustomerTariffSwitch.Models;
 
 namespace CustomerTariffSwitch.Services;
@@ -67,23 +68,37 @@ public class CsvService
         return new Dictionary<string, List<string[]>>(result, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static List<Customer> ParseCustomers(List<string[]> rows)
+    internal static List<Customer> ParseCustomers(List<string[]> rows)
     {
-        return rows
-            .Skip(1) // header
-            .Where(r => r.Length >= 5)
-            .Select(r => new Customer
+        var result = new List<Customer>();
+
+        foreach (var r in rows.Skip(1)) // header
+        {
+            try
             {
-                CustomerId = r[0],
-                Name = r[1],
-                HasUnpaidInvoice = bool.Parse(r[2]),
-                Sla = ParseEnum<SLALevel>(r[3], "SLA"),
-                MeterType = ParseEnum<MeterType>(r[4], "MeterType")
-            })
-            .ToList();
+                if (r.Length < 5)
+                    continue;
+
+                result.Add(new Customer
+                {
+                    CustomerId = r[0],
+                    Name = r[1],
+                    HasUnpaidInvoice = bool.Parse(r[2]),
+                    Sla = ParseEnum<SLALevel>(r[3], "SLA"),
+                    MeterType = ParseEnum<MeterType>(r[4], "MeterType")
+                });
+            }
+            catch
+            {
+                // Skip malformed rows - requests referencing them will be rejected as "Unknown customer"
+                Console.WriteLine($"  Warning: skipping malformed customer row '{string.Join(";", r)}'");
+            }
+        }
+
+        return result;
     }
 
-    private static (List<SwitchRequest> Valid, List<(string RawId, string Reason)> Invalid) ParseRequests(List<string[]> rows)
+    internal static (List<SwitchRequest> Valid, List<(string RawId, string Reason)> Invalid) ParseRequests(List<string[]> rows)
     {
         var valid = new List<SwitchRequest>();
         var invalid = new List<(string RawId, string Reason)>();
@@ -119,19 +134,33 @@ public class CsvService
         return (valid, invalid);
     }
 
-    private static List<Tariff> ParseTariffs(List<string[]> rows)
+    internal static List<Tariff> ParseTariffs(List<string[]> rows)
     {
-        return rows
-            .Skip(1) // header
-            .Where(r => r.Length >= 4)
-            .Select(r => new Tariff
+        var result = new List<Tariff>();
+
+        foreach (var r in rows.Skip(1)) // header
+        {
+            try
             {
-                TariffId = r[0],
-                Name = r[1],
-                RequiresSmartMeter = bool.Parse(r[2]),
-                BaseMonthlyGross = decimal.Parse(r[3], CultureInfo.InvariantCulture)
-            })
-            .ToList();
+                if (r.Length < 4)
+                    continue;
+
+                result.Add(new Tariff
+                {
+                    TariffId = r[0],
+                    Name = r[1],
+                    RequiresSmartMeter = bool.Parse(r[2]),
+                    BaseMonthlyGross = decimal.Parse(r[3], CultureInfo.InvariantCulture)
+                });
+            }
+            catch
+            {
+                // Skip malformed rows - requests referencing them will be rejected as "Unknown tariff"
+                Console.WriteLine($"  Warning: skipping malformed tariff row '{string.Join(";", r)}'");
+            }
+        }
+
+        return result;
     }
 
 
@@ -159,23 +188,7 @@ public class CsvService
         return lines;
     }
 
-    private static string FindInputDirectory()
-    {
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (current != null)
-        {
-            var candidate = Path.Combine(current.FullName, InputFolderName);
-            if (Directory.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            current = current.Parent;
-        }
-
-        throw new DirectoryNotFoundException(
-            $"Could not find '{InputFolderName}' folder by walking up from '{AppContext.BaseDirectory}'.");
-    }
+    private static string FindInputDirectory() =>
+        Path.Combine(SolutionPathHelper.FindRootByMarker(InputFolderName), InputFolderName);
 }
 
