@@ -7,4 +7,7 @@ public class Customer
     public bool HasUnpaidInvoice { get; set; }
     public SLALevel Sla { get; set; }
     public MeterType MeterType { get; set; }
+
+    public override string ToString() =>
+        $"{CustomerId} | {Name} | SLA={Sla} | Meter={MeterType} | UnpaidInvoice={HasUnpaidInvoice}";
 }

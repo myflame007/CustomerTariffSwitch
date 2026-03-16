@@ -11,3 +11,9 @@ public enum MeterType
     Classic,
     Smart
 }
+
+public enum DecisionStatus
+{
+    Approved,
+    Rejected
+}
