@@ -182,16 +182,38 @@ Loading CSV files ...
 
 Processing requests ...
 ------------------------------------------------------------
-[Approved] R1001 - Anna Maier | Due: 2025-03-31T01:15:00+02:00
-[Rejected] R1002 - Stadtcafe GmbH | Reason: Unpaid invoice
-...
+  [APPROVED] R1001 | Anna Maier | Due: 2025-03-31T01:15:00+02:00
+  [REJECTED] R1002 | Stadtcafe GmbH | Reason: Unpaid invoice
+  [APPROVED] R1003 | Jamal Idris | Due: 2025-10-28T14:30:00+01:00 | Follow-up: Schedule meter upgrade
+  ...
 ------------------------------------------------------------
   => 4 approved, 2 rejected
 
-  => Decisions saved to Output/decisions.json
+  => Decisions saved to: C:\...\Output\decisions.json
 ```
 
-Re-running without adding new rows to `requests.csv` produces zero decisions (all already processed).
+On a **second run** (no new rows added), all requests are already recorded in `decisions.json` and the run exits early:
+
+```
+  => 6 request(s) skipped (already processed in a previous run)
+  => Nothing to process -- all requests have already been handled.
+
+  To reprocess from scratch, delete the Output/ folder and re-run.
+```
+
+### Reprocessing from scratch
+
+The `Output/` folder is excluded from version control (`.gitignore`). To reset and process all requests again:
+
+```bash
+# Windows
+rmdir /s /q Output
+
+# Unix / Git Bash
+rm -rf Output/
+
+dotnet run --project CustomerTariffSwitch
+```
 
 ---
 
@@ -225,8 +247,7 @@ CustomerTariffSwitch/
 |     customers.csv
 |     tariffs.csv
 |     requests.csv
-+-- Output/
-|     decisions.json          (generated; committed for reference)
++-- Output/                   (generated; excluded via .gitignore)
 +-- CustomerTariffSwitch/     (console entry point)
 +-- CustomerTariffSwitch.Data/
 +-- CustomerTariffSwitch.Models/
