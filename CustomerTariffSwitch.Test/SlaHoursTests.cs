@@ -5,50 +5,102 @@ namespace CustomerTariffSwitch.Test;
 
 public class SlaHoursTests
 {
-    private readonly List<Customer> _customers;
-    private readonly List<Tariff> _tariffs;
+    private readonly ProcessRequestService _sut = new();
 
-    public SlaHoursTests()
+    
+
+    [Fact]
+    public void CalculateSlaHours_Returns48_ForStandardWithoutUpgrade()
     {
-        var csvService = new CsvService();
-        var (customers, _, tariffs) = csvService.ReadKnownFiles();
-        _customers = customers;
-        _tariffs = tariffs;
+        // Scenario 1: Standard SLA, no upgrade needed -> 48h
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
+
+        var result = _sut.CalculateSlaHours(customer, tariff);
+
+        Assert.Equal(48, result);
     }
+
 
     [Fact]
     public void CalculateSlaHours_Returns24_ForPremiumWithoutUpgrade()
     {
-        var sut = new ProcessRequestService();
-        var customer = _customers.Single(c => c.CustomerId == "C001");
-        var tariff = _tariffs.Single(t => t.TariffId == "T-BASIC");
+        // Scenario 2: Premium SLA, smart meter already installed -> 24h
+        var customer = new Customer
+        {
+            CustomerId = "C-1",
+            Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Premium,
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1",
+            Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
 
-        var result = sut.CalculateSlaHours(customer, tariff);
+        var result = _sut.CalculateSlaHours(customer, tariff);
 
         Assert.Equal(24, result);
     }
 
     [Fact]
-    public void CalculateSlaHours_Returns48_ForStandardWithoutUpgrade()
+    public void CalculateSlaHours_Returns60_ForStandardWithSmartMeterUpgrade()
     {
-        var sut = new ProcessRequestService();
-        var customer = _customers.Single(c => c.CustomerId == "C005");
-        var tariff = _tariffs.Single(t => t.TariffId == "T-BASIC");
+        // Scenario 3: Standard SLA + classic meter + smart tariff -> 48 + 12 = 60h
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Classic   // <-- needs upgrade
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = true,      // <-- requires smart meter
+            BaseMonthlyGross = 10m
+        };
 
-        var result = sut.CalculateSlaHours(customer, tariff);
+        var result = _sut.CalculateSlaHours(customer, tariff);
 
-        Assert.Equal(48, result);
+        Assert.Equal(60, result);
     }
 
     [Fact]
-    public void CalculateSlaHours_Returns60_ForStandardWithSmartMeterUpgrade()
+    public void CalculateSlaHours_Returns36_ForPremiumWithSmartMeterUpgrade()
     {
-        var sut = new ProcessRequestService();
-        var customer = _customers.Single(c => c.CustomerId == "C003");
-        var tariff = _tariffs.Single(t => t.TariffId == "T-ECO");
+        // Scenario 2+3: Premium SLA + classic meter + smart tariff -> 24 + 12 = 36h
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Premium,
+            MeterType = MeterType.Classic   // <-- needs upgrade
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = true,      // <-- requires smart meter
+            BaseMonthlyGross = 10m
+        };
 
-        var result = sut.CalculateSlaHours(customer, tariff);
+        var result = _sut.CalculateSlaHours(customer, tariff);
 
-        Assert.Equal(60, result);
+        Assert.Equal(36, result);
     }
 }

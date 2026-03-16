@@ -8,22 +8,47 @@ public class CsvServiceTests
     private readonly List<Customer> _customers;
     private readonly List<SwitchRequest> _requests;
     private readonly List<Tariff> _tariffs;
+    private readonly List<(string RawId, string Reason)> _invalidRequests;
 
     public CsvServiceTests()
     {
-        var sut = new CsvService();
-        var (customers, requests, tariffs) = sut.ReadKnownFiles();
+        var csvService = new CsvService();
+        var (customers, requests, tariffs, invalidRequests) = csvService.ReadKnownFiles();
         _customers = customers;
         _requests = requests;
         _tariffs = tariffs;
+        _invalidRequests = invalidRequests;
     }
 
     [Fact]
     public void ReadKnownFiles_ReturnsAllExpectedFiles()
     {
         Assert.Equal(5, _customers.Count);
-        Assert.Equal(6, _requests.Count);
+        Assert.Equal(6, _requests.Count); // R1007-R1009 are invalid and excluded
         Assert.Equal(3, _tariffs.Count);
+    }
+
+    [Fact]
+    public void ParseRequests_InvalidRows_AreNotInValidList()
+    {
+        Assert.DoesNotContain(_requests, r => r.RequestId == "R1007");
+        Assert.DoesNotContain(_requests, r => r.RequestId == "R1008");
+        Assert.DoesNotContain(_requests, r => r.RequestId == "R1009");
+    }
+
+    [Fact]
+    public void ParseRequests_InvalidRows_AreReturnedSeparately()
+    {
+        Assert.Equal(3, _invalidRequests.Count);
+        Assert.Contains(_invalidRequests, r => r.RawId == "R1007"); // empty field
+        Assert.Contains(_invalidRequests, r => r.RawId == "R1008"); // bad timestamp
+        Assert.Contains(_invalidRequests, r => r.RawId == "R1009"); // missing timestamp
+    }
+
+    [Fact]
+    public void ParseRequests_InvalidRows_HaveCorrectReason()
+    {
+        Assert.All(_invalidRequests, r => Assert.Equal("Invalid request data", r.Reason));
     }
 
     [Fact]

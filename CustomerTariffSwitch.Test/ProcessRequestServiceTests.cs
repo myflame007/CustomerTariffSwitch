@@ -5,82 +5,197 @@ namespace CustomerTariffSwitch.Test;
 
 public class ProcessRequestServiceTests
 {
-    private readonly List<Customer> _customers;
-    private readonly List<SwitchRequest> _requests;
-    private readonly List<Tariff> _tariffs;
-    private readonly EdgeCaseDataSet _edgeCases = EdgeCaseDataLoader.Load();
+    private readonly ProcessRequestService _ProcessRequestService = new();
 
-    public ProcessRequestServiceTests()
-    {
-        var csvService = new CsvService();
-        var (customers, requests, tariffs) = csvService.ReadKnownFiles();
-        _customers = customers;
-        _requests = requests;
-        _tariffs = tariffs;
-    }
+    // Summer time (CEST = UTC+2): 10:00 UTC = 12:00 Vienna local
+    private static readonly DateTimeOffset SummerTimestamp = new(2025, 6, 1, 10, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public void ProcessRequests_RejectsRequest_WhenCustomerHasUnpaidInvoice()
     {
-        var sut = new ProcessRequestService();
+        // Scenario 4: customer has unpaid invoice -> reject
+        var customer = new Customer
+        {
+            CustomerId = "C-1",
+            Name = "Test",
+            HasUnpaidInvoice = true,        
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1",
+            Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-1",
+            RequestedAt = SummerTimestamp
+        };
 
-        var customer = _customers.Single(c => c.CustomerId == "C002");
-        var request = _requests.Single(r => r.RequestId == "R1002");
-        var tariff = _tariffs.Single(t => t.TariffId == "T-BASIC");
-
-        var result = sut.ProcessRequests([customer], [request], [tariff]);
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [tariff], []);
 
         var decision = Assert.Single(result);
-        Assert.Equal("R1002", decision.RequestId);
-        Assert.Equal("Rejected", decision.Status);
+        Assert.Equal(DecisionStatus.Rejected, decision.Status);
         Assert.Equal("Unpaid invoice", decision.Reason);
     }
 
     [Fact]
-    public void ProcessRequests_ApprovesRequest_WhenCustomerAndTariffAreValidAndNoUnpaidInvoice()
+    public void ProcessRequests_RejectsRequest_WhenCustomerIsUnknown()
     {
-        var sut = new ProcessRequestService();
+        // Scenario 5: CustomerId in request does not exist in customer list
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-DOES-NOT-EXIST",
+            TargetTariffId = "T-1",
+            RequestedAt = SummerTimestamp
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
 
-        var customer = _customers.Single(c => c.CustomerId == "C001");
-        var request = _requests.Single(r => r.RequestId == "R1001");
-        var tariff = _tariffs.Single(t => t.TariffId == "T-ECO");
-
-        var result = sut.ProcessRequests([customer], [request], [tariff]);
+        var result = _ProcessRequestService.ProcessRequests([], [request], [tariff], []);
 
         var decision = Assert.Single(result);
-        Assert.Equal("Approved", decision.Status);
-        Assert.Null(decision.Reason);
-        Assert.Equal(DateTimeOffset.Parse("2025-03-31T01:15:00+02:00"), decision.DueAt);
+        Assert.Equal(DecisionStatus.Rejected, decision.Status);
+        Assert.Equal("Unknown customer", decision.Reason);
+    }
+
+    [Fact]
+    public void ProcessRequests_RejectsRequest_WhenTariffIsUnknown()
+    {
+        // Scenario 6: TariffId in request does not exist in tariff list
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Smart
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-DOES-NOT-EXIST",
+            RequestedAt = SummerTimestamp
+        };
+
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [], []);
+
+        var decision = Assert.Single(result);
+        Assert.Equal(DecisionStatus.Rejected, decision.Status);
+        Assert.Equal("Unknown tariff", decision.Reason);
+    }
+
+   
+
+    [Fact]
+    public void ProcessRequests_ApprovesRequest_WithStandardSla_AndSets48hDueDate()
+    {
+        // Scenario 1: Standard SLA, no upgrade -> DueAt = RequestedAt + 48h (Vienna)
+        // 10:00 UTC = 12:00 Vienna (CEST +2) -> +48h = 2025-06-03T12:00:00+02:00
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-1",
+            RequestedAt = SummerTimestamp
+        };
+
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [tariff], []);
+
+        var decision = Assert.Single(result);
+        Assert.Equal(DecisionStatus.Approved, decision.Status);
+        Assert.Equal(DateTimeOffset.Parse("2025-06-03T12:00:00+02:00"), decision.DueAt);
         Assert.Null(decision.FollowUpAction);
     }
 
     [Fact]
-    public void ProcessRequests_AddsTwelveHoursAndFollowUp_WhenSmartMeterUpgradeIsNeeded()
+    public void ProcessRequests_ApprovesRequest_WithPremiumSla_AndSets24hDueDate()
     {
-        var sut = new ProcessRequestService();
+        // Scenario 2: Premium SLA, no upgrade -> DueAt = RequestedAt + 24h (Vienna)
+        // 10:00 UTC = 12:00 Vienna (CEST +2) -> +24h = 2025-06-02T12:00:00+02:00
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Premium,         // <-- Premium
+            MeterType = MeterType.Smart
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = false,
+            BaseMonthlyGross = 10m
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-1",
+            RequestedAt = SummerTimestamp
+        };
 
-        var customer = _customers.Single(c => c.CustomerId == "C003");
-        var request = _requests.Single(r => r.RequestId == "R1003");
-        var tariff = _tariffs.Single(t => t.TariffId == "T-ECO");
-
-        var result = sut.ProcessRequests([customer], [request], [tariff]);
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [tariff], []);
 
         var decision = Assert.Single(result);
-        Assert.Equal("Approved", decision.Status);
-        Assert.Equal(DateTimeOffset.Parse("2025-10-28T14:30:00+01:00"), decision.DueAt);
-        Assert.Equal("Schedule meter upgrade", decision.FollowUpAction);
+        Assert.Equal(DecisionStatus.Approved, decision.Status);
+        Assert.Equal(DateTimeOffset.Parse("2025-06-02T12:00:00+02:00"), decision.DueAt);
+        Assert.Null(decision.FollowUpAction);
     }
 
     [Fact]
-    public void ProcessRequests_RejectsRequest_WhenCustomerIsUnknown_FromEdgeCaseData()
+    public void ProcessRequests_ApprovesWithFollowUpAndExtendedDueDate_WhenSmartMeterUpgradeNeeded()
     {
-        var sut = new ProcessRequestService();
-        var edge = _edgeCases.UnknownCustomerCase;
+        // Scenario 3: Standard + classic meter + smart tariff -> 48 + 12 = 60h, follow-up set
+        // 10:00 UTC = 12:00 Vienna (CEST +2) -> +60h = 2025-06-04T00:00:00+02:00
+        var customer = new Customer
+        {
+            CustomerId = "C-1", Name = "Test",
+            HasUnpaidInvoice = false,
+            Sla = SLALevel.Standard,
+            MeterType = MeterType.Classic   // <-- classic meter -> upgrade needed
+        };
+        var tariff = new Tariff
+        {
+            TariffId = "T-1", Name = "Test",
+            RequiresSmartMeter = true,      // <-- requires smart meter
+            BaseMonthlyGross = 10m
+        };
+        var request = new SwitchRequest
+        {
+            RequestId = "R-1",
+            CustomerId = "C-1",
+            TargetTariffId = "T-1",
+            RequestedAt = SummerTimestamp
+        };
 
-        var result = sut.ProcessRequests(_customers, [edge.Request], [edge.Tariff]);
+        var result = _ProcessRequestService.ProcessRequests([customer], [request], [tariff], []);
 
         var decision = Assert.Single(result);
-        Assert.Equal("Rejected", decision.Status);
-        Assert.Equal("Unknown customer", decision.Reason);
+        Assert.Equal(DecisionStatus.Approved, decision.Status);
+        Assert.Equal(DateTimeOffset.Parse("2025-06-04T00:00:00+02:00"), decision.DueAt);
+        Assert.Equal("Schedule meter upgrade", decision.FollowUpAction);
     }
 }
