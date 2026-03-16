@@ -2,11 +2,12 @@ namespace CustomerTariffSwitch.Models;
 
 public class Customer
 {
-    public required string CustomerId { get; set; }
-    public required string Name { get; set; }
-    public bool HasUnpaidInvoice { get; set; }
-    public SLALevel Sla { get; set; }
-    public MeterType MeterType { get; set; }
+    // init kann nur beim Erstellen gesetzt werden
+    public required string CustomerId { get; init; }
+    public required string Name { get; init; }
+    public bool HasUnpaidInvoice { get; init; }
+    public SLALevel Sla { get; init; }
+    public MeterType MeterType { get; init; }
 
     public override string ToString() =>
         $"{CustomerId} | {Name} | SLA={Sla} | Meter={MeterType} | UnpaidInvoice={HasUnpaidInvoice}";
