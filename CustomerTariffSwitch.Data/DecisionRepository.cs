@@ -42,7 +42,9 @@ public class DecisionRepository
 
     // Appends new decisions to the output file (creates it if it doesn't exist)
     // Idempotent: decisions already persisted (by RequestId) are skipped
+    // see: https://learn.microsoft.com/en-us/azure/azure-functions/functions-idempotent
     // Atomic write via temp-file swap prevents partial/corrupt output on crash
+    // see: https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move?view=net-10.0
     public void AppendDecisions(IEnumerable<RequestDecision> newDecisions)
     {
         var path = GetOutputFilePath();
