@@ -27,6 +27,7 @@ public class ProcessRequestService
     public List<RequestDecision> ProcessRequests(IReadOnlyCollection<Customer> customers, IReadOnlyCollection<SwitchRequest> requests,
             IReadOnlyCollection<Tariff> tariffs, IReadOnlyCollection<(string RawId, string Reason)> invalidRequests)
     {
+        // Für O(1) Zugriff
         var customersById = customers.ToDictionary(c => c.CustomerId, StringComparer.OrdinalIgnoreCase);
         var tariffsById = tariffs.ToDictionary(t => t.TariffId, StringComparer.OrdinalIgnoreCase);
 
@@ -102,6 +103,12 @@ public class ProcessRequestService
 
         if (ViennaTimeZone.IsAmbiguousTime(targetLocal))
         {
+            //Explanation:
+            //Die ganze Stunde 02:00 bis 02:59 existiert zweimal: https://learn.microsoft.com/en-us/dotnet/api/system.timezoneinfo.isambiguoustime?view=net-10.0
+            //26.10.2025 02:30 ist ambiguous
+            //02:30 CEST (+02:00) -> OK (frühere Occurrence, Sommer)
+            //02:30 CET  (+01:00) -> OK (spätere Occurrence, Winter)
+            //Wir nehmen Max() = +02:00 (CEST) = die frühere, strengere Frist
             var ambiguousOffsets = ViennaTimeZone.GetAmbiguousTimeOffsets(targetLocal);
             return new DateTimeOffset(targetLocal, ambiguousOffsets.Max());
         }

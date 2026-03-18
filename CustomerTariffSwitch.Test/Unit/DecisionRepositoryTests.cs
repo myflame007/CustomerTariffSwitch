@@ -6,12 +6,12 @@ namespace CustomerTariffSwitch.Test;
 public class DecisionRepositoryTests : IDisposable
 {
     private readonly string _tempFile;
-    private readonly DecisionRepository _sut;
+    private readonly DecisionRepository _decisionRepository;
 
     public DecisionRepositoryTests()
     {
         _tempFile = Path.Combine(Path.GetTempPath(), $"decisions_{Guid.NewGuid():N}.json");
-        _sut = new DecisionRepository(overridePath: _tempFile);
+        _decisionRepository = new DecisionRepository(overridePath: _tempFile);
     }
 
     public void Dispose()
@@ -25,7 +25,7 @@ public class DecisionRepositoryTests : IDisposable
     [Fact]
     public void LoadProcessedRequestIds_ReturnsEmptySet_WhenFileDoesNotExist()
     {
-        var ids = _sut.LoadProcessedRequestIds();
+        var ids = _decisionRepository.LoadProcessedRequestIds();
 
         Assert.Empty(ids);
     }
@@ -38,9 +38,9 @@ public class DecisionRepositoryTests : IDisposable
             RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow),
             RequestDecision.Rejected("R-2", "Unknown customer")
         };
-        _sut.AppendDecisions(decisions);
+        _decisionRepository.AppendDecisions(decisions);
 
-        var ids = _sut.LoadProcessedRequestIds();
+        var ids = _decisionRepository.LoadProcessedRequestIds();
 
         Assert.Contains("R-1", ids);
         Assert.Contains("R-2", ids);
@@ -49,9 +49,9 @@ public class DecisionRepositoryTests : IDisposable
     [Fact]
     public void LoadProcessedRequestIds_IsCaseInsensitive()
     {
-        _sut.AppendDecisions([RequestDecision.Approved("r-abc", "Test", DateTimeOffset.UtcNow)]);
+        _decisionRepository.AppendDecisions([RequestDecision.Approved("r-abc", "Test", DateTimeOffset.UtcNow)]);
 
-        var ids = _sut.LoadProcessedRequestIds();
+        var ids = _decisionRepository.LoadProcessedRequestIds();
 
         Assert.Contains("R-ABC", ids);
         Assert.Contains("r-abc", ids);
@@ -62,7 +62,7 @@ public class DecisionRepositoryTests : IDisposable
     [Fact]
     public void AppendDecisions_CreatesFile_WhenItDoesNotExist()
     {
-        _sut.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
+        _decisionRepository.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
 
         Assert.True(File.Exists(_tempFile));
     }
@@ -70,7 +70,7 @@ public class DecisionRepositoryTests : IDisposable
     [Fact]
     public void AppendDecisions_WritesValidJson()
     {
-        _sut.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
+        _decisionRepository.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
 
         var json = File.ReadAllText(_tempFile);
         Assert.StartsWith("[", json.TrimStart());
@@ -79,10 +79,10 @@ public class DecisionRepositoryTests : IDisposable
     [Fact]
     public void AppendDecisions_AccumulatesDecisionsAcrossCalls()
     {
-        _sut.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
-        _sut.AppendDecisions([RequestDecision.Rejected("R-2", "Unknown tariff")]);
+        _decisionRepository.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
+        _decisionRepository.AppendDecisions([RequestDecision.Rejected("R-2", "Unknown tariff")]);
 
-        var ids = _sut.LoadProcessedRequestIds();
+        var ids = _decisionRepository.LoadProcessedRequestIds();
 
         Assert.Equal(2, ids.Count);
         Assert.Contains("R-1", ids);
@@ -94,10 +94,10 @@ public class DecisionRepositoryTests : IDisposable
     {
         // Scenario 8: same RequestId appended twice must not result in duplicate entry
         var decision = RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow);
-        _sut.AppendDecisions([decision]);
-        _sut.AppendDecisions([decision]);
+        _decisionRepository.AppendDecisions([decision]);
+        _decisionRepository.AppendDecisions([decision]);
 
-        var ids = _sut.LoadProcessedRequestIds();
+        var ids = _decisionRepository.LoadProcessedRequestIds();
 
         Assert.Single(ids);
     }
@@ -107,7 +107,7 @@ public class DecisionRepositoryTests : IDisposable
     {
         var dueAt = DateTimeOffset.Parse("2025-06-04T00:00:00+02:00");
         var decision = RequestDecision.Approved("R-1", "Anna", dueAt, followUpAction: "Schedule meter upgrade");
-        _sut.AppendDecisions([decision]);
+        _decisionRepository.AppendDecisions([decision]);
 
         var json = File.ReadAllText(_tempFile);
 
@@ -118,7 +118,7 @@ public class DecisionRepositoryTests : IDisposable
     [Fact]
     public void AppendDecisions_LeavesNoTempFile_AfterSuccessfulWrite()
     {
-        _sut.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
+        _decisionRepository.AppendDecisions([RequestDecision.Approved("R-1", "Anna", DateTimeOffset.UtcNow)]);
 
         Assert.False(File.Exists(_tempFile + ".tmp"));
     }

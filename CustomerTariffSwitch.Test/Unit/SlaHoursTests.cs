@@ -5,9 +5,7 @@ namespace CustomerTariffSwitch.Test;
 
 public class SlaHoursTests
 {
-    private readonly ProcessRequestService _sut = new();
-
-    
+    private readonly ProcessRequestService _processRequestService = new();
 
     [Fact]
     public void CalculateSlaHours_Returns48_ForStandardWithoutUpgrade()
@@ -27,7 +25,7 @@ public class SlaHoursTests
             BaseMonthlyGross = 10m
         };
 
-        var result = _sut.CalculateSlaHours(customer, tariff);
+        var result = _processRequestService.CalculateSlaHours(customer, tariff);
 
         Assert.Equal(48, result);
     }
@@ -53,7 +51,7 @@ public class SlaHoursTests
             BaseMonthlyGross = 10m
         };
 
-        var result = _sut.CalculateSlaHours(customer, tariff);
+        var result = _processRequestService.CalculateSlaHours(customer, tariff);
 
         Assert.Equal(24, result);
     }
@@ -76,7 +74,7 @@ public class SlaHoursTests
             BaseMonthlyGross = 10m
         };
 
-        var result = _sut.CalculateSlaHours(customer, tariff);
+        var result = _processRequestService.CalculateSlaHours(customer, tariff);
 
         Assert.Equal(60, result);
     }
@@ -99,7 +97,7 @@ public class SlaHoursTests
             BaseMonthlyGross = 10m
         };
 
-        var result = _sut.CalculateSlaHours(customer, tariff);
+        var result = _processRequestService.CalculateSlaHours(customer, tariff);
 
         Assert.Equal(36, result);
     }

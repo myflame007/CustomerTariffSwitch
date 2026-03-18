@@ -1,5 +1,5 @@
-using CustomerTariffSwitch.Services;
 using CustomerTariffSwitch.Models;
+using CustomerTariffSwitch.Data.Services;
 
 namespace CustomerTariffSwitch.Test;
 

@@ -13,7 +13,6 @@ public class DecisionRepository
     private readonly string? _overridePath;
 
     // Production: uses SolutionPathHelper to locate Output/decisions.json
-    // Tests: pass an explicit path to a temp directory
     public DecisionRepository(string? overridePath = null)
     {
         _overridePath = overridePath;
@@ -26,11 +25,9 @@ public class DecisionRepository
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public string GetOutputFilePath() => GetDecisionsFilePath();
-
     public IReadOnlySet<string> LoadProcessedRequestIds()
     {
-        var path = GetDecisionsFilePath();
+        var path = GetOutputFilePath();
 
         if (!File.Exists(path))
             return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -48,7 +45,7 @@ public class DecisionRepository
     // Atomic write via temp-file swap prevents partial/corrupt output on crash
     public void AppendDecisions(IEnumerable<RequestDecision> newDecisions)
     {
-        var path = GetDecisionsFilePath();
+        var path = GetOutputFilePath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
         var existing = new List<RequestDecision>();
@@ -59,18 +56,20 @@ public class DecisionRepository
             existing = JsonSerializer.Deserialize<List<RequestDecision>>(json, JsonOptions) ?? [];
         }
 
+        // Wir wollen nur wissen, ob vorhanden oder nicht O(1)
         var existingIds = existing
             .Select(d => d.RequestId)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         existing.AddRange(newDecisions.Where(d => !existingIds.Contains(d.RequestId)));
 
+        // Um sicherzustellen, dass Outputfile nicht corrupted ist
         var tempPath = path + ".tmp";
         File.WriteAllText(tempPath, JsonSerializer.Serialize(existing, JsonOptions));
         File.Move(tempPath, path, overwrite: true);
     }
 
-    private string GetDecisionsFilePath()
+    public string GetOutputFilePath()
     {
         if (_overridePath != null)
             return _overridePath;
