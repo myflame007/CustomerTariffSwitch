@@ -4,7 +4,7 @@ using System.Text;
 using CustomerTariffSwitch.Data.Helper;
 using CustomerTariffSwitch.Models;
 
-namespace CustomerTariffSwitch.Services;
+namespace CustomerTariffSwitch.Data.Services;
 
 public class CsvService
 {
@@ -44,6 +44,8 @@ public class CsvService
 
         var result = new ConcurrentDictionary<string, List<string[]>>(StringComparer.OrdinalIgnoreCase);
 
+        // All CSV files are loaded concurrently
+        // see: https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/how-to-write-a-simple-parallel-foreach-loop
         Parallel.ForEach(csvFiles, csvFilePath =>
         {
             var fileName = Path.GetFileName(csvFilePath);
@@ -174,6 +176,9 @@ public class CsvService
         throw new FormatException($"Invalid value '{rawValue}' for {fieldName}.");
     }
 
+    // FileShare.ReadWrite allows reading the file even if another process has it open
+    // see: https://learn.microsoft.com/en-us/dotnet/api/system.io.file.readalltext?view=net-10.0
+    // see: https://learn.microsoft.com/en-us/dotnet/csharp/how-to/parse-strings-using-split
     private static List<string> ReadAllLinesWithSharedAccess(string path)
     {
         var lines = new List<string>();

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using CustomerTariffSwitch.Data.Helper;
 using CustomerTariffSwitch.Models;
 
-namespace CustomerTariffSwitch.Services;
+namespace CustomerTariffSwitch.Data.Services;
 
 public class DecisionRepository
 {
